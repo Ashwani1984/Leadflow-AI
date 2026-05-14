@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations
+    function isValidMessage(data) {
+      return data.keys().hasAll(['text', 'authorId', 'authorName', 'createdAt']) 
+        && data.keys().size() <= 5
+        && data.text is string && data.text.size() <= 1000
+        && data.authorId is string && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.createdAt == request.time;
+    }
+
+    function isValidPresence(data, userId) {
+      return data.keys().hasAll(['userId', 'lastSeen', 'isOnline'])
+        && data.keys().size() <= 5
+        && data.userId == userId
+        && data.lastSeen == request.time
+        && data.isOnline is bool;
+    }
+
+    function isValidLead(data) {
+      return data.name is string && data.name.size() <= 256
+        && data.email is string && data.email.size() <= 256
+        && data.status is string;
+    }
+
+    function isValidTask(data) {
+      return data.leadId is string
+        && data.title is string && data.title.size() <= 256
+        && data.status is string;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['action', 'details', 'status', 'user', 'timestamp', 'ip'])
+        && data.keys().size() <= 6
+        && data.action is string && data.action.size() <= 128
+        && data.details is string && data.details.size() <= 1000
+        && data.status in ['SUCCESS', 'WARNING', 'FAILURE']
+        && data.user is string
+        && data.timestamp == request.time
+        && data.ip is string;
+    }
+
+    // Collections
+    match /leads/{leadId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidLead(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidTask(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /audit_logs/{logId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidAuditLog(incoming());
+      allow update, delete: if false; // Logs are immutable
+    }
+
+    match /messages/{messageId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(messageId) && isValidMessage(incoming());
+      allow update: if false; // Messages are immutable for now
+      allow delete: if isOwner(existing().authorId);
+    }
+
+    match /presence/{userId} {
+      allow list: if true;
+      allow get: if true;
+      allow create, update: if isOwner(userId) && isValidPresence(incoming(), userId);
+      allow delete: if false;
+    }
+  }
+}

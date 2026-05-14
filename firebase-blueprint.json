@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "Message": {
+      "title": "Message",
+      "description": "A chat message",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "authorId", "authorName", "createdAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A potential customer",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "industry": { "type": "string" },
+        "website": { "type": "string" },
+        "phone": { "type": "string" },
+        "dateAdded": { "type": "string" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["name", "email", "status", "priority", "industry", "website", "dateAdded", "avatar"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "An action item related to a lead",
+      "type": "object",
+      "properties": {
+        "leadId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "assignedTo": { "type": "string" }
+      },
+      "required": ["leadId", "title", "description", "dueDate", "status", "priority", "assignedTo"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "User online status",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "isOnline": { "type": "boolean" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["userId", "lastSeen", "isOnline"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit logs",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string" },
+        "user": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "ip": { "type": "string" }
+      },
+      "required": ["action", "details", "status", "user", "timestamp"]
+    }
+  },
+  "firestore": {
+    "leads": {
+      "schema": "Lead",
+      "description": "Lead database"
+    },
+    "tasks": {
+      "schema": "Task",
+      "description": "Task management"
+    },
+    "messages": {
+      "schema": "Message",
+      "description": "Global chat messages"
+    },
+    "presence": {
+      "schema": "Presence",
+      "description": "User presence tracking"
+    },
+    "audit_logs": {
+      "schema": "AuditLog",
+      "description": "System activity logs"
+    }
+  }
+}
