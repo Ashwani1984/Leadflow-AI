@@ -38,8 +38,8 @@ import {
   getDocFromServer,
   setDoc 
 } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
-import { Loader2 } from 'lucide-react';
+import { signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { Loader2, ShieldAlert, LogIn } from 'lucide-react';
 
 const chartData = [
   { value: 10 }, { value: 15 }, { value: 8 }, { value: 20 }, { value: 12 }, { value: 25 }, { value: 18 }
@@ -100,28 +100,57 @@ export default function App() {
   const [selectedTaskLeadId, setSelectedTaskLeadId] = useState<string | undefined>(undefined);
   
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   usePresence();
 
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        try {
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error("Auth error:", err);
-        }
-      } else {
+      if (user) {
         setIsAuthReady(true);
+        setAuthError(null);
+      } else {
+        try {
+          // Attempt anonymous auth, but handle the case where it's disabled in the console
+          await signInAnonymously(auth);
+        } catch (err: any) {
+          if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
+            console.warn("Anonymous auth restricted. User must sign in with Google.");
+            setAuthError("Identity verification is required for this cluster.");
+          } else {
+            console.error("Auth error:", err);
+            setAuthError(err.message);
+          }
+          setIsAuthReady(true);
+        }
       }
     });
-    return () => unsubAuth();
+
+    // Fallback timer: if auth doesn't resolve in 4 seconds, show the UI anyway
+    const timer = setTimeout(() => {
+      setIsAuthReady(true);
+    }, 4000);
+
+    return () => {
+      unsubAuth();
+      clearTimeout(timer);
+    };
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error("Detailed sign-in error:", err);
+      showNotification('Sign-in failed. Please try again.');
+    }
+  };
 
   useEffect(() => {
     if (!isAuthReady) return;
 
-    const leadsQuery = query(collection(db, 'leads'), orderBy('dateAdded', 'desc'));
+    const leadsQuery = query(collection(db, 'leads'));
     const unsubLeads = onSnapshot(leadsQuery, (snapshot) => {
       const leadsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
       setLeads(leadsData);
@@ -140,6 +169,37 @@ export default function App() {
   }, [isAuthReady]);
 
   const [activeWorkflowStep, setActiveWorkflowStep] = useState<number | null>(null);
+
+  const seedSampleData = async () => {
+    showNotification('Initializing Strategic Dataset...');
+    const samples = [
+      { name: 'Alex Rivera', email: 'alex.rivera@fintech.io', industry: 'Fintech', status: 'PENDING', priority: 'High', website: 'fintech.io', phone: '+15550102030' },
+      { name: 'Jordan Smith', email: 'jordan@cloudscale.net', industry: 'SaaS', status: 'COMPLETED', priority: 'Medium', website: 'cloudscale.net', phone: '+15550203040' },
+      { name: 'Elena Vance', email: 'elena@blackmesa.com', industry: 'HealthTech', status: 'AI ANALYZING', priority: 'High', website: 'blackmesa.com', phone: '+15550304050' },
+      { name: 'Riley Cooper', email: 'riley@nexgen.org', industry: 'EdTech', status: 'PENDING', priority: 'Low', website: 'nexgen.org', phone: '+15550405060' }
+    ];
+
+    try {
+      for (const sample of samples) {
+        const randomPhotoId = ['1535713875002-d1d0cf377fde', '1494790108377-be9c29b29330', '1599566150163-29194dcaad36', '1531427186611-ecfd6d936c79', '1517841905240-472988babdf9'][Math.floor(Math.random() * 5)];
+        await addDoc(collection(db, 'leads'), {
+          ...sample,
+          dateAdded: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          avatar: `https://images.unsplash.com/photo-${randomPhotoId}?w=100&h=100&fit=crop`
+        });
+      }
+      showNotification('Dataset stabilized. Neural patterns visible.');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'leads');
+    }
+  };
+
+  useEffect(() => {
+    (window as any).seedSampleData = seedSampleData;
+    return () => {
+      delete (window as any).seedSampleData;
+    };
+  }, [leads]);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -341,6 +401,41 @@ export default function App() {
           <Loader2 className="w-12 h-12 text-primary animate-spin mb-6" />
           <h2 className="text-2xl font-serif text-on-surface italic mb-2">Leadflow AI</h2>
           <p className="text-on-surface-variant text-sm uppercase tracking-widest font-bold">Synchronizing Secure Protocols...</p>
+        </div>
+      );
+    }
+
+    if (!auth.currentUser) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-surface text-center p-6">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-8 border border-primary/20">
+            <ShieldAlert className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-3xl font-serif text-on-surface italic mb-4">Identity Verification Required</h2>
+          <p className="text-on-surface-variant text-sm max-w-md mb-8 leading-relaxed">
+            The LeadFlow Strategic partition requires a verified identity for security and data integrity. 
+          </p>
+
+          <div className="flex flex-col gap-4 w-full max-w-sm">
+            <button 
+              onClick={handleGoogleSignIn}
+              className="flex items-center justify-center gap-3 w-full px-8 py-4 bg-primary text-black text-[11px] font-bold uppercase tracking-widest rounded-sm hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-primary/20"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign in with Google Identity
+            </button>
+            
+            {(authError?.includes('restricted') || authError?.includes('allowed')) && (
+              <div className="p-4 bg-warning/5 border border-warning/20 rounded-sm">
+                <p className="text-warning text-[10px] font-mono leading-relaxed mb-2">
+                  ANONYMOUS_AUTH_DISABLED: System cannot grant guest access automatically.
+                </p>
+                <p className="text-on-surface-variant/60 text-[9px] leading-relaxed italic">
+                  To enable direct public access, go to your Firebase Console and enable 'Anonymous' authentication in the Sign-in methods.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       );
     }

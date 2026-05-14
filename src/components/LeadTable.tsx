@@ -250,8 +250,19 @@ export function LeadTable({ leads, searchQuery, onSearchChange, onAddLead, onEdi
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-8 py-20 text-center text-on-surface-variant text-xs">
-                  No records found matching your criteria.
+                <td colSpan={7} className="px-8 py-20 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <span className="text-on-surface-variant text-xs mb-2">No records found in the current cluster database.</span>
+                    <button 
+                      onClick={() => (window as any).seedSampleData?.()}
+                      className="flex items-center gap-2 px-6 py-3 border border-primary/40 text-primary text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:bg-primary/5 transition-all"
+                    >
+                      Initialize Strategic Dataset
+                    </button>
+                    <p className="text-[9px] text-on-surface-variant/40 max-w-xs leading-relaxed">
+                      Initialize standard intelligence profiles to verify system integrity and dashboard dynamics.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}

@@ -38,5 +38,14 @@ LeadFlow is a high-security, AI-driven lead management and autonomous outreach p
 
 All activities within the LeadFlow cluster are timestamped with stratum-1 atomic clocks and recorded in the audit logs. Identity verification is required for all strategic partitions.
 
+## ⚙️ Firebase Configuration
+
+To ensure the authentication system functions correctly in your own environment:
+1. Go to the [Firebase Console](https://console.firebase.google.com/).
+2. Navigate to **Authentication** > **Sign-in method**.
+3. Enable **Google** sign-in (required for strategic identity verification).
+4. (Optional) Enable **Anonymous** authentication if you want to allow limited guest access.
+5. Add your domain to the **Authorized domains** list under Settings.
+
 ---
 *Developed for the Ashwani1984 Strategic Intelligence Unit.*
